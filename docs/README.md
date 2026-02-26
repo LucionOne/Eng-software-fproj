@@ -1,7 +1,7 @@
 # Portfolio — Calculator
 
 **Team:** Guilherme P (209635),   
-**Theme:** Calculator (subject to change, TBD)  
+**Theme:** Calculator (will change)  
 
 ## Quick info
 - How to run / verify: TBD  
