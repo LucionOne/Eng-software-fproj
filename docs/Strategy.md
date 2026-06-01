@@ -4,9 +4,9 @@
 - [X] Get information of the project 
 - [X] make the big picture architecture
 - [X] decide language
-- [ ] decide "plugins/software"
+- [X] decide "plugins/software"
 - [ ] learn them
-- design more steps
+- [ ] 
 
 
 ## What i believe the project is about

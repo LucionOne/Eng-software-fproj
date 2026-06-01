@@ -1,1 +1,5 @@
 .vscode
+
+Database/Logs.db
+src/assets/__pycache__/SQL_db_config.cpython-314.pyc
+src/classes/__pycache__/DatabaseManager.cpython-314.pyc

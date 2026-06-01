@@ -9,6 +9,7 @@
 - Python, why? makes life easy for simple projects and i don't plan to scale any of this
 
 - shall make use of `sqlite3` and `FastAPI` libs
+- will need to make use of threads
 
 ## The dashboard
 - has two possibilities
