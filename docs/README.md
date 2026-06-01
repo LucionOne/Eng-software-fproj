@@ -1,4 +1,5 @@
-# Portfolio — Calculator
+
+# Portfolio — Garden Manager
 
 **Team:** Guilherme P. Santos (209635)
 **Project:** Garden manager

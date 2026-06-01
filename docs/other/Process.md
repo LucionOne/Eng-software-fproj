@@ -1,3 +1,4 @@
+
 # Process (baseline)
 
 **Cycle:** daily cadence (1-day cycles). Each cycle should end with a commit of at least a part fully working.
