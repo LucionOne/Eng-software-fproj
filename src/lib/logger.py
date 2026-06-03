@@ -2,7 +2,7 @@ import logging
 import sys
 
 def setup_logging(log_file="logs\\DEBUG.log", warning_file="logs\\WARNING.log"):
-    """Generates the root logger and the default config"""
+    """Configures the root logger"""
     formatter = logging.Formatter(
         "%(asctime)s  %(levelname)-8s  %(name)s — %(message)s"
     )
