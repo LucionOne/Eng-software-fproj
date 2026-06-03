@@ -2,9 +2,9 @@ DATABASE_PATH_STR:str = 'Database'
 LOG_DATABASE_FILE_NAME:str = 'Logs.db'
 
 # with open('src\\assets\\data_logs_db_wireframe.sql') as wireframe:
-#   LOG_DATABASE_WIREFRAME = wireframe.read()
+#   LOG_DATABASE_WIREFRAME:str = wireframe.read()
 
-LOG_DATABASE_WIREFRAME = """
+LOG_DATABASE_WIREFRAME:str = """
 CREATE TABLE IF NOT EXISTS measurement_types (
   id    INTEGER PRIMARY KEY AUTOINCREMENT,
   name  TEXT    NOT NULL UNIQUE
