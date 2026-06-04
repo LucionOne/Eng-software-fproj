@@ -38,24 +38,24 @@ class DatabaseManager:
 
     # SQL query executers
     
-    def fetch_data(self, sql_query:str) -> list[Any]:
+    def fetch_data(self, sql_query:str, parameters:list[Any]) -> list[Any]:
         """Executes a sql query and returns the result <p>
         Won't commit to the database"""
         try:
             cursor = self.connection.cursor()
-            cursor.execute(sql_query)
+            cursor.execute(sql_query, parameters)
             return cursor.fetchall()
 
         except Exception as exception:
             log.warning("couldn't make query: %s\nexception: %s", sql_query, exception)
             return []
 
-    def make_query(self, sql_query:str) -> list[Any]:
+    def make_query(self, sql_query:str, parameters:list[Any]) -> list[Any]:
         """Executes a sql query and returns the result <p>
         Will commit to the database"""
         with self.connection as conn: # "with" auto commits when the function exits its scope
             cursor = conn.cursor()
-            cursor.execute(sql_query)
+            cursor.execute(sql_query, parameters)
             return cursor.fetchall()
 
     def execute_script(self, sql_queries:str) -> list[Any]:

@@ -12,4 +12,7 @@
 - `docs\other\Process.md` — DoR/DoD, flow of development.
 - `docs\Strategy.md` — Thought process
 
+## Dependencies
+- `requests`
+
 ---
