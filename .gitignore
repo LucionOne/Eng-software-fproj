@@ -2,6 +2,7 @@
 Database
 .vscode
 logs
+.Proj_venv
 
 # cache files
 src/classes/__pycache__

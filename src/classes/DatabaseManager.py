@@ -1,5 +1,5 @@
 from assets import SQL_config as config
-from typing import Any
+from typing import Any,Sequence
 import pathlib
 import sqlite3
 import logging
@@ -38,7 +38,7 @@ class DatabaseManager:
 
     # SQL query executers
     
-    def fetch_data(self, sql_query:str, parameters:list[Any]) -> list[Any]:
+    def fetch_data(self, sql_query:str, parameters:Sequence[Any]) -> list[Any]:
         """Executes a sql query and returns the result <p>
         Won't commit to the database"""
         try:
@@ -50,7 +50,7 @@ class DatabaseManager:
             log.warning("couldn't make query: %s\nexception: %s", sql_query, exception)
             return []
 
-    def make_query(self, sql_query:str, parameters:list[Any]) -> list[Any]:
+    def make_query(self, sql_query:str, parameters:Sequence[Any]) -> list[Any]:
         """Executes a sql query and returns the result <p>
         Will commit to the database"""
         with self.connection as conn: # "with" auto commits when the function exits its scope

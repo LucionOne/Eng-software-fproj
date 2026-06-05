@@ -15,14 +15,15 @@ class SensorType(Enum):
     Ph = 3
     
     def __str__(self) -> str:
-        if self.value == 1:
-            return "Temperature"
-        elif self.value == 2:
-            return "Humidity"
-        elif self.value == 3:
-            return "Ph"
-        else:
-            return "Unknown"
+        match self.value:
+            case SensorType.Temperature:
+                return "Temperature"
+            case SensorType.Humidity:
+                return "Humidity"
+            case SensorType.Ph:
+                return "Ph"
+            case _:
+                return "Unknown"
 
 class Sensor():
     def __init__(self, id:int, type:SensorType) -> None:
@@ -32,9 +33,9 @@ class Sensor():
         
 
     def serialize(self) -> dict:
-        base_dict:dict = {"sensor_id":None, "measurement":None, "value": None}
+        base_dict:dict = {"sensor_id":None, "sensor_type":None, "value": None}
         base_dict["sensor_id"] = self.id
-        base_dict["measurement"] = str(self.type)
+        base_dict["sensor_type"] = str(self.type)
         base_dict["value"] = round(self.value,2)
         return base_dict
 
