@@ -4,12 +4,12 @@
 - [x] DatabaseManager class (initialization, DB file connection, query methods, tested)
 
 ## In Progress 🚀
-- [ ] DataPuller class
+- [X] DataPuller class
   - [x] Initialization
   - [x] Threading infrastructure
-  - [ ] URL configuration & mock API integration
-  - [ ] Database write operations
-  - [ ] End-to-end execution
+  - [X] URL configuration & mock API integration
+  - [X] Database write operations
+  - [X] End-to-end execution
 
 ## Blocked ⏸️
 - [ ] Dashboard implementation (awaiting DataPuller completion)
