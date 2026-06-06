@@ -8,7 +8,7 @@ def main():
     logger.setup_logging()
     Puller = DataPuller()
     Puller.Start()
-    time.sleep(30)
+    time.sleep(60)
 
 
 

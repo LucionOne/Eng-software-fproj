@@ -1,15 +1,20 @@
-# Objective
-## [X] Make DatabaseManager class
-1. [X] init
-2. [X] connection to db file
-3. [X] queries methods
-4. [X] tested
+# Development Objectives
 
-## DataPuller class
-1. [X] init
-2. [X] threads
-3. [ ] ulr config | mock api ready
-4. [ ] db write
-5. [ ] running
+## Completed ✓
+- [x] DatabaseManager class (initialization, DB file connection, query methods, tested)
 
-## 
+## In Progress 🚀
+- [ ] DataPuller class
+  - [x] Initialization
+  - [x] Threading infrastructure
+  - [ ] URL configuration & mock API integration
+  - [ ] Database write operations
+  - [ ] End-to-end execution
+
+## Blocked ⏸️
+- [ ] Dashboard implementation (awaiting DataPuller completion)
+- [ ] Integration tests (awaiting manager stability)
+
+## Planned 📋
+- [ ] Performance optimization & error handling
+- [ ] Deployment & monitoring setup

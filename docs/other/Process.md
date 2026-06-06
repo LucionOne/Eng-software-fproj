@@ -1,32 +1,37 @@
+# Development Process
 
-# Process (baseline)
+## Cycle
+1-day development cycles. Each cycle must end with a working commit of at least one complete part.
 
-**Cycle:** daily cadence (1-day cycles). Each cycle should end with a commit of at least a part fully working.
+## Definition of Ready (DoR)
+A task is ready when:
+1. All subtasks are clearly defined
+2. Each subtask is small, focused, and achievable within the cycle
+3. Basic implementation approach is documented
 
-**Definition of Ready (DoR)**:
-1. Has its parts defined
-2. Each part is simple, small, with a proper objective and doable within a cycle.
-3. Basic architecture is in paper
+## Definition of Done (DoD)
+A task is done when:
+1. Code is complete and compiles/runs without errors
+2. Integrates cleanly with existing components
+3. Includes appropriate documentation and tests
+4. A commit to main branch has been completed
 
-**Definition of Done (DoD)**:
-1. Fully coded
-2. Working with everything else.  
-3. Documented and Tested.
-4. Commit to main has been realized.
+## Branching & Review Flow
+1. Create feature branch from `dev`
+2. Implement parts incrementally
+3. Request AI review before considering complete
+4. Both implementation and review must agree part is ready
+5. Keep complete parts in `dev` until feature is fully integrated
+6. Merge feature to `main` only when fully tested
 
+## Evidence Retention
+- **Commit messages:** Reference feature/part ID and what was completed
+- **Architecture history:** Document major design decisions in git log or this repo
+- **Test results:** Include CI/CD output (when implemented)
 
-**Commit & Review flow**
-- Create start development of parts in the dev branch.  
-- When part seems to be done give to an AI for review.
-- Both dev and AI need to agree that part is ready.
-- Ready parts are kept in dev until it forms a full feature.
-- When a full feature is done pass it to main.
-
-**Evidence to keep**
-- Commit's messages.
-- architecture history.
-
-**Part definition**
-- It's a part of a one or multiple features
-- Smallest part of development
-- can be a small function to a full class or feature
+## Part Definition
+A "part" is:
+- Smallest unit of work within a feature
+- Ranges from single function to complete class
+- Must be independently testable
+- Must add clear value to the system

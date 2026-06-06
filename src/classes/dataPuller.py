@@ -50,18 +50,18 @@ class DataPuller():
 
         self.url:str = "http://localhost:3001/sensor_data"
         self.fetch_interval:int=5
-        self.tries:int = 10
+        self.tries:int = 2
 
     def _fetcher(self) -> None:
         while True:
-            for _try in range(self.tries):
-                try:
-                    print("fetched")
-                    resp = requests.get(self.url)
-                    self._queue.put(resp.json())
-                    break
-                except Exception as e:
-                    log.warning("Couldn't fetch data, url: %s\ntry: %s\nexception: %s", e, exc_info=True) # , self.url, _try
+            try:
+                resp = requests.get(self.url)
+                self._queue.put(resp.json())
+                print("fetched")
+            except requests.exceptions.RequestException:
+                print("no connection")
+            except Exception as e:
+                log.warning("Couldn't fetch data, url: %s\ntry: %s\nexception: %s", e, exc_info=True) # , self.url, _try
             time.sleep(self.fetch_interval)
 
     def _db_writer(self) -> None:
