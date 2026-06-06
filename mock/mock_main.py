@@ -15,7 +15,7 @@ class SensorType(Enum):
     Ph = 3
     
     def __str__(self) -> str:
-        match self.value:
+        match self:
             case SensorType.Temperature:
                 return "Temperature"
             case SensorType.Humidity:
