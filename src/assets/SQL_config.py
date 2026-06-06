@@ -13,6 +13,5 @@ CREATE TABLE IF NOT EXISTS sensor_logs (
   ph REAL
 );
 
-CREATE INDEX IF NOT EXISTS idx_sensor_logs_sensor_id ON sensor_logs(sensor_id);
 CREATE INDEX IF NOT EXISTS idx_sensor_logs_recorded_at ON sensor_logs(recorded_at);
 """
