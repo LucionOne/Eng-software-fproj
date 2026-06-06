@@ -1,25 +1,38 @@
-# I desire to make the whole project in under a week, it shouldn't be too hard
+# Strategy & Design Rationale
 
-## probable steps to take
-- [X] Get information of the project 
-- [X] make the big picture architecture
-- [X] decide language
-- [ ] decide "plugins/software"
-- [ ] learn them
-- design more steps
+## Project Scope
+Build a lightweight garden monitoring system in under one week. Focus: well-designed, maintainable code over feature completeness.
 
+## Key Decisions
 
-## What i believe the project is about
-- unfortunately there's almost no good info on the objectives, what i'm supposed to do and what the system should be able to do.
-- i need to make a system for monitoring and controlling a small garden
-- the hardware situation seems completely dead
-- i only need to worry about the software
-- the software must be well designed
-- need to have a database for the storage of the monitored data
-- and a dashboard to easily see the data
+### Language: Python
+- **Why:** Rapid prototyping, simple syntax, excellent for small projects
+- **Concern:** No scaling required, so overhead is negligible
 
+### Framework: FastAPI
+- **Why:** Modern, type-safe, minimal boilerplate, auto-generated docs
+- **Tradeoff:** Learning curve for async concepts, but threading suffices for MVP
 
-## The code
-- Let's keep it simple
-- small and simple functions and well named variables
+### Database: SQLite
+- **Why:** Zero external dependencies, file-based, sufficient for single-instance local use
+- **Tradeoff:** Not suitable for distributed systems; acceptable here
 
+### Architecture: Threading over Async
+- **Why:** Simpler initial implementation, easier debugging
+- **Future:** Refactor to async/await if scaling to multiple ingestion sources
+
+### Frontend: Static HTML/JS
+- **Why:** One less service to maintain; FastAPI serves static files natively
+- **Tradeoff:** No dynamic template rendering; simple but sufficient
+
+## Quality Standards
+- **Code:** Small, well-named functions; self-documenting where possible
+- **Testing:** Unit tests for critical components (DatabaseManager, DataPuller)
+- **Documentation:** This suite of markdown files captures all decisions
+- **Commits:** Atomic, clear messages with references to objectives
+
+## Risk Mitigation
+1. **Hardware unavailable:** Mitigated by mock API simulator
+2. **Scope creep:** Fixed 1-week timeline; features drop after that
+3. **Database issues:** Tested DatabaseManager early to catch issues
+4. **Integration failures:** Staged development (manager → API → dashboard)
