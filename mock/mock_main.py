@@ -4,6 +4,7 @@ import uvicorn
 from datetime import datetime, timedelta
 from enum import Enum
 import random as rand
+from typing import Generator
 
 # API instance creator
 app = FastAPI(title="MockAPI", docs_url=None)
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     main_instance.run_sim()
 
 # API get
-def get_db():
+def get_db() -> Generator[Simulation]:
     yield main_instance
     
 @app.get("/sensor_data")
