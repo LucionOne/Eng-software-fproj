@@ -4,7 +4,8 @@ import sys
 def setup_logging(log_file="logs\\DEBUG.log", warning_file="logs\\WARNING.log"):
     """Configures the root logger"""
     formatter = logging.Formatter(
-        "%(asctime)s  %(levelname)-8s  %(name)s — %(message)s"
+        "%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S"
     )
 
     # Console handler

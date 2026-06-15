@@ -1,4 +1,4 @@
-
+from lib.helper import handle_datetime_to_iso_exception
 from classes.DatabaseManager import DatabaseManager
 from enum import Enum
 import logging
@@ -6,6 +6,7 @@ import queue
 import requests
 import threading
 import time
+from datetime import datetime
 
 log = logging.getLogger(__name__)
 
@@ -99,7 +100,8 @@ class DataPuller():
 
     @staticmethod
     def translate_from_api(item: dict) -> tuple[str, float, float, float]:
-        """Translate API item to (recorded_at, temperature, humidity, ph)."""
+        """Translate API item to (recorded_at, temperature, humidity, ph).
+        API absolutely needs to give datetime in ISO 8601 format"""
         try:
             sensors: list[dict] = item["sensors"]
             recorded_at: str = item["datetime"]
