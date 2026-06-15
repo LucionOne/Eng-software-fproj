@@ -20,6 +20,9 @@ class DatabaseManager:
         self._build_db()
 
     # base
+    
+    def close_connection(self) -> None:
+        self.connection.close()
 
     def _build_db(self) -> None:
         WIREFRAME:str = config.LOG_DATABASE_WIREFRAME
