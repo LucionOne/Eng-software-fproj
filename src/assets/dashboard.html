@@ -692,7 +692,7 @@ RULES:  readings sorted id ASC (oldest first).
     </div>
     <div class="rstats">
       <div><div class="rs-val" id="nTemp">—</div><div class="rs-lbl">Min</div></div>
-      <div><div class="rs-val" id="aTemp">—</div><div class="rs-lbl">Avg</div></div>
+      <div><div class="rs-val" id="avgTemp">—</div><div class="rs-lbl">Avg</div></div>
       <div><div class="rs-val" id="xTemp">—</div><div class="rs-lbl">Max</div></div>
     </div>
   </div>
@@ -711,7 +711,7 @@ RULES:  readings sorted id ASC (oldest first).
     </div>
     <div class="rstats">
       <div><div class="rs-val" id="nHum">—</div><div class="rs-lbl">Min</div></div>
-      <div><div class="rs-val" id="aHum">—</div><div class="rs-lbl">Avg</div></div>
+      <div><div class="rs-val" id="avgHum">—</div><div class="rs-lbl">Avg</div></div>
       <div><div class="rs-val" id="xHum">—</div><div class="rs-lbl">Max</div></div>
     </div>
   </div>
@@ -730,7 +730,7 @@ RULES:  readings sorted id ASC (oldest first).
     </div>
     <div class="rstats">
       <div><div class="rs-val" id="nPh">—</div><div class="rs-lbl">Min</div></div>
-      <div><div class="rs-val" id="aPh">—</div><div class="rs-lbl">Avg</div></div>
+      <div><div class="rs-val" id="avgPh">—</div><div class="rs-lbl">Avg</div></div>
       <div><div class="rs-val" id="xPh">—</div><div class="rs-lbl">Max</div></div>
     </div>
   </div>
@@ -1150,9 +1150,9 @@ function renderAll() {
     const st   = triStats(vals);
     const f    = v => v != null ? v.toFixed(1) : '—';
     const el   = id => document.getElementById(id);
-    el('n' + cap(key)).textContent = f(st.min);
-    el('a' + cap(key)).textContent = f(st.avg);
-    el('x' + cap(key)).textContent = f(st.max);
+    el('n'   + cap(key)).textContent = f(st.min);
+    el('avg' + cap(key)).textContent = f(st.avg);
+    el('x'   + cap(key)).textContent = f(st.max);
   }
 }
 
@@ -1234,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     ['Temp','Hum','Ph'].forEach(k => {
       document.getElementById('v'+k).textContent = '—';
-      ['n','a','x'].forEach(p => document.getElementById(p+k).textContent = '—');
+      ['n','avg','x'].forEach(p => document.getElementById(p+k).textContent = '—');
       document.getElementById('e'+k).classList.add('visible');
     });
     // Close settings panel
