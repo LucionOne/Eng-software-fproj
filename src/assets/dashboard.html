@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SensorFlow · IoT Dashboard</title>
+
+<!-- Fonts: Inter for UI, JetBrains Mono for sensor values -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+<!-- Chart.js 4 — area & doughnut rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════
+ * DESIGN TOKENS
+ * ═══════════════════════════════════════════════════ */
+:root {
+  --bg:        #0b0d14;
+  --surface:   #101320;
+  --surface-2: #151928;
+
+  --temp-c:  #ff6b8a;
+  --hum-c:   #00d4aa;
+  --ph-c:    #8b6cff;
+
+  --text:    #c9d1e0;
+  --muted:   #475569;
+  --dim:     #1e2438;
+
+  --border:  rgba(255,255,255,0.06);
+  --border-hi: rgba(255,255,255,0.13);
+
+  /* Neumorphic shadows (dark surface) */
+  --neu-out: 8px 8px 24px rgba(0,0,0,0.65), -4px -4px 12px rgba(255,255,255,0.028);
+  --neu-in:  inset 4px 4px 14px rgba(0,0,0,0.55), inset -2px -2px 7px rgba(255,255,255,0.025);
+
+  /* Glass panel */
+  --glass-bg: rgba(255,255,255,0.038);
+  --glass-blur: blur(22px);
+
+  --r-xl: 26px;
+  --r-lg: 18px;
+  --r-md: 12px;
+  --r-sm: 8px;
+
+  --font:  'Inter', -apple-system, sans-serif;
+  --mono:  'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 24px 20px;
+  /* Subtle dot-grid atmosphere */
+  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ═══════════════════════════════════════════════════
+ * LAYOUT
+ * ═══════════════════════════════════════════════════ */
+.dash {
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ═══════════════════════════════════════════════════
+ * GLASS CARD MIXIN  (apply class="glass" to panels)
+ * ═══════════════════════════════════════════════════ */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border);
+  box-shadow: var(--neu-out);
+  /* Inner top-edge highlight — characteristic glassmorphism detail */
+  border-top-color: rgba(255,255,255,0.10);
+}
+
+/* ═══════════════════════════════════════════════════
+ * HEADER
+ * ═══════════════════════════════════════════════════ */
+.header {
+  border-radius: var(--r-xl);
+  padding: 18px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-brand { display: flex; align-items: center; gap: 13px; }
+
+.logo {
+  width: 42px; height: 42px;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, var(--temp-c), var(--ph-c));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px;
+  flex-shrink: 0;
+  box-shadow: 0 0 22px rgba(139,108,255,0.35);
+}
+
+.brand-text h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.brand-text p {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  margin-top: 1px;
+}
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+/* Status badge */
+.status-badge {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 15px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--neu-out);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.sdot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.4s, box-shadow 0.4s;
+  flex-shrink: 0;
+}
+.sdot.live  { background: var(--hum-c); box-shadow: 0 0 8px rgba(0,212,170,0.75); animation: blink 2s infinite; }
+.sdot.demo  { background: #f9a825;      box-shadow: 0 0 8px rgba(249,168,37,0.7); }
+.sdot.error { background: var(--temp-c); box-shadow: 0 0 8px rgba(255,107,138,0.75); }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Icon button */
+.ibtn {
+  width: 38px; height: 38px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  box-shadow: var(--neu-out);
+  transition: color 0.2s, border-color 0.2s;
+  user-select: none;
+}
+.ibtn:hover { color: var(--text); border-color: var(--border-hi); }
+.ibtn.active { box-shadow: var(--neu-in); color: var(--ph-c); border-color: rgba(139,108,255,0.35); }
+
+/* ═══════════════════════════════════════════════════
+ * SETTINGS PANEL
+ * ═══════════════════════════════════════════════════ */
+.settings-wrap {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.42s ease, opacity 0.3s ease, margin 0.3s ease;
+  margin-top: -10px;
+}
+.settings-wrap.open {
+  max-height: 520px;
+  opacity: 1;
+  margin-top: 0;
+}
+
+.settings-inner {
+  border-radius: var(--r-xl);
+  padding: 22px 26px 20px;
+}
+
+.settings-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.field { display: flex; flex-direction: column; gap: 5px; }
+
+.field label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.field input[type="text"],
+.field input[type="number"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  padding: 9px 11px;
+  outline: none;
+  box-shadow: var(--neu-in);
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.field input:focus { border-color: var(--ph-c); }
+
+/* Toggle */
+.toggle-row { display: flex; align-items: center; gap: 9px; padding-top: 22px; }
+.toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.tslider {
+  position: absolute; inset: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: var(--neu-in);
+  transition: 0.3s;
+}
+.tslider::before {
+  content: '';
+  position: absolute;
+  left: 3px; top: 3px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: 0.3s;
+}
+.toggle input:checked + .tslider { background: rgba(139,108,255,0.18); border-color: var(--ph-c); }
+.toggle input:checked + .tslider::before { transform: translateX(18px); background: var(--ph-c); }
+.toggle-label { font-size: 0.8rem; color: var(--muted); }
+
+/* Buttons */
+.settings-actions { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+
+.btn-primary {
+  padding: 9px 20px;
+  background: linear-gradient(135deg, var(--ph-c), #5a3fd6);
+  border: none;
+  border-radius: var(--r-md);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(139,108,255,0.38);
+  transition: opacity 0.2s, transform 0.1s;
+}
+.btn-primary:hover  { opacity: 0.88; }
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-ghost {
+  padding: 9px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--neu-out);
+  transition: color 0.2s, border-color 0.2s;
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--border-hi); }
+
+/* API spec info box */
+.spec-box {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.spec-box .sh  { color: var(--ph-c);   font-weight: 600; }
+.spec-box .sk  { color: var(--hum-c);  }
+.spec-box .sv  { color: var(--temp-c); }
+
+/* ═══════════════════════════════════════════════════
+ * CURRENT READINGS ROW  (3 doughnut gauge cards)
+ * ═══════════════════════════════════════════════════ */
+.readings-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.rcard {
+  border-radius: var(--r-xl);
+  padding: 22px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient glow emanating from bottom — the signature element */
+.rcard::after {
+  content: '';
+  position: absolute;
+  bottom: -20px; left: 50%;
+  transform: translateX(-50%);
+  width: 65%; height: 70px;
+  border-radius: 50%;
+  filter: blur(28px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.rcard.tc::after { background: var(--temp-c); }
+.rcard.hc::after { background: var(--hum-c); }
+.rcard.pc::after { background: var(--ph-c); }
+
+.rcard-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sensor-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sensor-icon { font-size: 1rem; }
+
+/* Doughnut + centred value */
+.donut-wrap {
+  position: relative;
+  width: 148px;
+  height: 148px;
+}
+.donut-wrap canvas { width: 100% !important; height: 100% !important; }
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 12px; /* push up into the gauge arc */
+  pointer-events: none;
+}
+
+.dval {
+  font-family: var(--mono);
+  font-size: 1.65rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: color 0.4s;
+}
+.rcard.tc .dval { color: var(--temp-c); }
+.rcard.hc .dval { color: var(--hum-c); }
+.rcard.pc .dval { color: var(--ph-c); }
+
+.dunit {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* Min / Avg / Max stats */
+.rstats {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  text-align: center;
+}
+
+.rs-val {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.rs-lbl {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 1px;
+}
+
+/* New-data pulse on reading value */
+@keyframes vpulse { 0%{ filter: brightness(2.2); } 100%{ filter: brightness(1); } }
+.pulse { animation: vpulse 0.55s ease-out; }
+
+/* ═══════════════════════════════════════════════════
+ * AREA CHART CARDS
+ * ═══════════════════════════════════════════════════ */
+.chart-card {
+  border-radius: var(--r-xl);
+  padding: 22px 26px 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Left accent stripe with glow */
+.chart-card::before {
+  content: '';
+  position: absolute;
+  top: 18%; bottom: 18%;
+  left: 0; width: 3px;
+  border-radius: 0 2px 2px 0;
+}
+.chart-card.tc::before { background: var(--temp-c); box-shadow: 0 0 14px var(--temp-c); }
+.chart-card.hc::before { background: var(--hum-c);  box-shadow: 0 0 14px var(--hum-c); }
+.chart-card.pc::before { background: var(--ph-c);   box-shadow: 0 0 14px var(--ph-c); }
+
+.chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chart-meta h2 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chart-meta p {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: var(--mono);
+}
+
+/* Time-range selector */
+.time-btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+.tbtn {
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--neu-out);
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+}
+
+.tbtn.active {
+  box-shadow: var(--neu-in);
+  color: var(--text);
+  border-color: var(--border-hi);
+}
+
+.chart-card.tc .tbtn.active { color: var(--temp-c); border-color: rgba(255,107,138,0.5); }
+.chart-card.hc .tbtn.active { color: var(--hum-c);  border-color: rgba(0,212,170,0.5); }
+.chart-card.pc .tbtn.active { color: var(--ph-c);   border-color: rgba(139,108,255,0.5); }
+
+.chart-area {
+  position: relative;
+  height: 190px;
+}
+
+/* Empty placeholder */
+.no-data {
+  position: absolute; inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  gap: 7px;
+}
+.no-data.visible { display: flex; }
+.no-data-icon { font-size: 1.6rem; opacity: 0.35; }
+
+/* ═══════════════════════════════════════════════════
+ * FOOTER / STATUS BAR
+ * ═══════════════════════════════════════════════════ */
+.statusbar {
+  border-radius: var(--r-lg);
+  padding: 12px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: rgba(255,255,255,0.02);
+}
+
+.statusbar span { display: flex; align-items: center; gap: 6px; }
+.statusbar b { color: var(--text); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════
+ * SCROLLBAR
+ * ═══════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════
+ * RESPONSIVE
+ * ═══════════════════════════════════════════════════ */
+@media (max-width: 860px) {
+  body { padding: 12px; }
+  .readings-row { grid-template-columns: 1fr; }
+  .chart-area { height: 160px; }
+}
+@media (max-width: 540px) {
+  .settings-grid { grid-template-columns: 1fr 1fr; }
+  .header-brand h1 { font-size: 0.95rem; }
+}
+</style>
+</head>
+<body>
+<div class="dash">
+
+<!-- ─────────────────── HEADER ─────────────────── -->
+<header class="header glass">
+  <div class="header-brand">
+    <div class="logo">⚡</div>
+    <div class="brand-text">
+      <h1>SensorFlow</h1>
+      <p>IoT Monitoring Dashboard</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-badge">
+      <span class="sdot" id="sDot"></span>
+      <span id="sTxt">Initializing…</span>
+    </div>
+    <button class="ibtn" id="settingsBtn" title="Settings (S)">⚙</button>
+  </div>
+</header>
+
+<!-- ─────────────────── SETTINGS ─────────────────── -->
+<div class="settings-wrap" id="settingsWrap">
+<div class="settings-inner glass">
+
+  <div class="settings-title">
+    ⚙&nbsp; Configuration
+  </div>
+
+  <div class="settings-grid">
+
+    <div class="field">
+      <label>API Base URL</label>
+      <input type="text" id="cUrl" placeholder="http://192.168.1.100:3000" />
+    </div>
+
+    <div class="field">
+      <label>Endpoint Path</label>
+      <input type="text" id="cPath" placeholder="/api/readings" />
+    </div>
+
+    <div class="field">
+      <label>Initial Data Limit</label>
+      <input type="number" id="cLimit" min="10" max="5000" />
+    </div>
+
+    <div class="field">
+      <label>Poll Interval (seconds)</label>
+      <input type="number" id="cPoll" min="1" max="600" />
+    </div>
+
+    <div class="field">
+      <label>Max Chart Points</label>
+      <input type="number" id="cMax" min="50" max="2000" />
+    </div>
+
+    <div class="field">
+      <label>Demo Mode</label>
+      <div class="toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="cDemo" />
+          <span class="tslider"></span>
+        </label>
+        <span class="toggle-label">Use synthetic data</span>
+      </div>
+    </div>
+
+  </div><!-- /settings-grid -->
+
+  <div class="settings-actions">
+    <button class="btn-primary" id="applyBtn">Apply &amp; Restart</button>
+    <button class="btn-ghost" id="resetBtn">Reset Defaults</button>
+    <span style="margin-left:auto; font-size:0.68rem; color:var(--muted)">Config saved to localStorage</span>
+  </div>
+
+  <!-- ── API Specification reference ── -->
+  <div class="spec-box" id="specBox">
+<span class="sh">API SPECIFICATION</span>
+
+<span class="sh">Endpoint 1</span> — Initial load
+  GET  {API_BASE_URL}{ENDPOINT_PATH}<span class="sk">?limit</span>=<span class="sv">{INITIAL_LIMIT}</span>
+
+<span class="sh">Endpoint 2</span> — Polling (only new data)
+  GET  {API_BASE_URL}{ENDPOINT_PATH}<span class="sk">?after_id</span>=<span class="sv">{last known id}</span>
+
+<span class="sh">Both endpoints return the same JSON shape:</span>
+{
+  <span class="sk">"status"</span>: <span class="sv">"ok"</span>,
+  <span class="sk">"data"</span>: {
+    <span class="sk">"readings"</span>: [
+      {
+        <span class="sk">"id"</span>:          <span class="sv">1</span>,                             <span class="sh">// int  — auto-increment PK</span>
+        <span class="sk">"timestamp"</span>:  <span class="sv">"2024-06-14T10:00:00.000Z"</span>,  <span class="sh">// ISO 8601 UTC</span>
+        <span class="sk">"temperature"</span>: <span class="sv">23.5</span>,                         <span class="sh">// float  °C</span>
+        <span class="sk">"humidity"</span>:    <span class="sv">65.2</span>,                         <span class="sh">// float  0–100 %</span>
+        <span class="sk">"ph"</span>:          <span class="sv">7.1</span>                           <span class="sh">// float  0–14</span>
+      }
+    ],
+    <span class="sk">"latest_id"</span>: <span class="sv">100</span>,   <span class="sh">// int — highest id in this response</span>
+    <span class="sk">"count"</span>:     <span class="sv">100</span>    <span class="sh">// int — number of readings returned</span>
+  }
+}
+
+RULES:  readings sorted id ASC (oldest first).
+        on no new data return empty readings[] + current latest_id.
+        on error return HTTP 4xx/5xx — dashboard retries automatically.
+  </div>
+
+</div><!-- /settings-inner -->
+</div><!-- /settings-wrap -->
+
+<!-- ─────────────────── CURRENT READINGS ─────────────────── -->
+<section class="readings-row">
+
+  <div class="rcard tc glass">
+    <div class="rcard-head">
+      <span class="sensor-name">Temperature</span>
+      <span class="sensor-icon">🌡️</span>
+    </div>
+    <div class="donut-wrap">
+      <canvas id="dTemp" role="img" aria-label="Doughnut gauge showing current temperature"></canvas>
+      <div class="donut-center">
+        <div class="dval" id="vTemp">—</div>
+        <div class="dunit">°C</div>
+      </div>
+    </div>
+    <div class="rstats">
+      <div><div class="rs-val" id="nTemp">—</div><div class="rs-lbl">Min</div></div>
+      <div><div class="rs-val" id="aTemp">—</div><div class="rs-lbl">Avg</div></div>
+      <div><div class="rs-val" id="xTemp">—</div><div class="rs-lbl">Max</div></div>
+    </div>
+  </div>
+
+  <div class="rcard hc glass">
+    <div class="rcard-head">
+      <span class="sensor-name">Humidity</span>
+      <span class="sensor-icon">💧</span>
+    </div>
+    <div class="donut-wrap">
+      <canvas id="dHum" role="img" aria-label="Doughnut gauge showing current humidity"></canvas>
+      <div class="donut-center">
+        <div class="dval" id="vHum">—</div>
+        <div class="dunit">%</div>
+      </div>
+    </div>
+    <div class="rstats">
+      <div><div class="rs-val" id="nHum">—</div><div class="rs-lbl">Min</div></div>
+      <div><div class="rs-val" id="aHum">—</div><div class="rs-lbl">Avg</div></div>
+      <div><div class="rs-val" id="xHum">—</div><div class="rs-lbl">Max</div></div>
+    </div>
+  </div>
+
+  <div class="rcard pc glass">
+    <div class="rcard-head">
+      <span class="sensor-name">pH Level</span>
+      <span class="sensor-icon">⚗️</span>
+    </div>
+    <div class="donut-wrap">
+      <canvas id="dPh" role="img" aria-label="Doughnut gauge showing current pH level"></canvas>
+      <div class="donut-center">
+        <div class="dval" id="vPh">—</div>
+        <div class="dunit">pH</div>
+      </div>
+    </div>
+    <div class="rstats">
+      <div><div class="rs-val" id="nPh">—</div><div class="rs-lbl">Min</div></div>
+      <div><div class="rs-val" id="aPh">—</div><div class="rs-lbl">Avg</div></div>
+      <div><div class="rs-val" id="xPh">—</div><div class="rs-lbl">Max</div></div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ─────────────────── AREA CHARTS ─────────────────── -->
+<div class="chart-card tc glass">
+  <div class="chart-head">
+    <div class="chart-meta">
+      <h2>🌡 Temperature</h2>
+      <p>Degrees Celsius (°C) · auto-scaled y-axis</p>
+    </div>
+    <div class="time-btns">
+      <button class="tbtn active" data-sensor="temp" data-range="1h">1H</button>
+      <button class="tbtn" data-sensor="temp" data-range="6h">6H</button>
+      <button class="tbtn" data-sensor="temp" data-range="24h">24H</button>
+      <button class="tbtn" data-sensor="temp" data-range="all">ALL</button>
+    </div>
+  </div>
+  <div class="chart-area">
+    <canvas id="aTemp" role="img" aria-label="Area chart of temperature over time"></canvas>
+    <div class="no-data visible" id="eTemp"><span class="no-data-icon">📡</span>Waiting for data…</div>
+  </div>
+</div>
+
+<div class="chart-card hc glass">
+  <div class="chart-head">
+    <div class="chart-meta">
+      <h2>💧 Humidity</h2>
+      <p>Relative Humidity (%) · 0–100 scale</p>
+    </div>
+    <div class="time-btns">
+      <button class="tbtn active" data-sensor="hum" data-range="1h">1H</button>
+      <button class="tbtn" data-sensor="hum" data-range="6h">6H</button>
+      <button class="tbtn" data-sensor="hum" data-range="24h">24H</button>
+      <button class="tbtn" data-sensor="hum" data-range="all">ALL</button>
+    </div>
+  </div>
+  <div class="chart-area">
+    <canvas id="aHum" role="img" aria-label="Area chart of humidity over time"></canvas>
+    <div class="no-data visible" id="eHum"><span class="no-data-icon">📡</span>Waiting for data…</div>
+  </div>
+</div>
+
+<div class="chart-card pc glass">
+  <div class="chart-head">
+    <div class="chart-meta">
+      <h2>⚗️ pH Level</h2>
+      <p>Acidity / Alkalinity (pH) · 0–14 scale</p>
+    </div>
+    <div class="time-btns">
+      <button class="tbtn active" data-sensor="ph" data-range="1h">1H</button>
+      <button class="tbtn" data-sensor="ph" data-range="6h">6H</button>
+      <button class="tbtn" data-sensor="ph" data-range="24h">24H</button>
+      <button class="tbtn" data-sensor="ph" data-range="all">ALL</button>
+    </div>
+  </div>
+  <div class="chart-area">
+    <canvas id="aPh" role="img" aria-label="Area chart of pH level over time"></canvas>
+    <div class="no-data visible" id="ePh"><span class="no-data-icon">📡</span>Waiting for data…</div>
+  </div>
+</div>
+
+<!-- ─────────────────── STATUS BAR ─────────────────── -->
+<footer class="statusbar glass">
+  <span>🕐 Updated: <b id="fTime">—</b></span>
+  <span>📊 Readings stored: <b id="fCount">0</b></span>
+  <span>🆔 Latest ID: <b id="fId">—</b></span>
+  <span>⏱ Poll every: <b id="fPoll">—</b></span>
+</footer>
+
+</div><!-- /dash -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+ * SensorFlow — Dashboard Logic
+ *
+ * QUICK START
+ * ───────────
+ * 1. Open this file in a browser.
+ * 2. Demo mode is ON by default — you'll see live synthetic data.
+ * 3. Click ⚙ (top right) → paste your API URL → toggle off Demo Mode
+ *    → click "Apply & Restart".
+ *
+ * For the expected API JSON shape, see the spec panel inside settings.
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * ❶  CONFIGURATION  ← all tunable values live here
+ * ═══════════════════════════════════════════════════════════════════ */
+const DEFAULTS = {
+  API_BASE_URL  : 'http://localhost:3000',  // Base URL of your API server
+  API_PATH      : '/api/readings',           // Endpoint path
+  INITIAL_LIMIT : 120,                       // Readings fetched on startup
+  POLL_INTERVAL : 5,                         // Seconds between polling calls
+  MAX_POINTS    : 300,                       // Max data points kept per chart
+  DEMO_MODE     : true,                      // true = no API, use fake data
+};
+
+/* ─── Sensor descriptors ─── */
+const SENSORS = {
+  temp : { key:'temperature', label:'Temperature', unit:'°C', color:'#ff6b8a', min:-10, max:60  },
+  hum  : { key:'humidity',    label:'Humidity',    unit:'%',  color:'#00d4aa', min:0,   max:100 },
+  ph   : { key:'ph',          label:'pH',          unit:'pH', color:'#8b6cff', min:0,   max:14  },
+};
+
+/* ─── Runtime state ─── */
+const S = {
+  cfg       : {...DEFAULTS},
+  readings  : [],           // All stored readings
+  lastId    : 0,            // Highest id received so far
+  pollTimer : null,         // setInterval handle
+  demoTime  : new Date(),   // Current position of demo clock
+  demoSeq   : 1,            // Auto-increment for demo ids
+  ranges    : { temp:'1h', hum:'1h', ph:'1h' },
+  charts    : { area:{}, donut:{} },
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❷  SETTINGS  — persist to / load from localStorage
+ * ═══════════════════════════════════════════════════════════════════ */
+function loadCfg() {
+  try {
+    const raw = localStorage.getItem('sf_cfg');
+    S.cfg = raw ? {...DEFAULTS, ...JSON.parse(raw)} : {...DEFAULTS};
+  } catch { S.cfg = {...DEFAULTS}; }
+}
+
+function saveCfg() {
+  localStorage.setItem('sf_cfg', JSON.stringify(S.cfg));
+}
+
+function pushToUI() {
+  document.getElementById('cUrl').value   = S.cfg.API_BASE_URL;
+  document.getElementById('cPath').value  = S.cfg.API_PATH;
+  document.getElementById('cLimit').value = S.cfg.INITIAL_LIMIT;
+  document.getElementById('cPoll').value  = S.cfg.POLL_INTERVAL;
+  document.getElementById('cMax').value   = S.cfg.MAX_POINTS;
+  document.getElementById('cDemo').checked = S.cfg.DEMO_MODE;
+}
+
+function pullFromUI() {
+  S.cfg.API_BASE_URL   = document.getElementById('cUrl').value.trim().replace(/\/$/, '');
+  S.cfg.API_PATH       = document.getElementById('cPath').value.trim();
+  S.cfg.INITIAL_LIMIT  = Math.max(10, parseInt(document.getElementById('cLimit').value) || 120);
+  S.cfg.POLL_INTERVAL  = Math.max(1,  parseInt(document.getElementById('cPoll').value)  || 5);
+  S.cfg.MAX_POINTS     = Math.max(50, parseInt(document.getElementById('cMax').value)   || 300);
+  S.cfg.DEMO_MODE      = document.getElementById('cDemo').checked;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❸  DEMO DATA GENERATOR
+ *     Generates realistic sine-wave-based readings.
+ *     On initial load the clock is rewound so charts show history.
+ * ═══════════════════════════════════════════════════════════════════ */
+function demoReadings(count) {
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const t  = S.demoTime.getTime() / 1000;
+    const temp = +(22 + 5.5 * Math.sin(t / 720)   + (Math.random() - .5) * 0.7).toFixed(2);
+    const hum  = +(62 - 10  * Math.sin(t / 720)   + (Math.random() - .5) * 1.2).toFixed(2);
+    const ph   = +(7.0 + .45 * Math.sin(t / 1080) + (Math.random() - .5) * 0.09).toFixed(2);
+    out.push({ id: S.demoSeq++, timestamp: S.demoTime.toISOString(), temperature: temp, humidity: hum, ph });
+    S.demoTime = new Date(S.demoTime.getTime() + 30_000); // +30 s per reading
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❹  API LAYER
+ * ═══════════════════════════════════════════════════════════════════ */
+async function apiGet(url) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchInitial() {
+  setStatus('init', 'Connecting…');
+
+  if (S.cfg.DEMO_MODE) {
+    // Rewind demo clock to generate INITIAL_LIMIT readings of history
+    S.demoTime = new Date(Date.now() - S.cfg.INITIAL_LIMIT * 30_000);
+    ingest(demoReadings(S.cfg.INITIAL_LIMIT));
+    setStatus('demo', `Demo · ${S.cfg.INITIAL_LIMIT} synthetic readings`);
+    startPoll();
+    return;
+  }
+
+  try {
+    const url  = `${S.cfg.API_BASE_URL}${S.cfg.API_PATH}?limit=${S.cfg.INITIAL_LIMIT}`;
+    const json = await apiGet(url);
+    ingest(json.data.readings);
+    if (json.data.latest_id) S.lastId = json.data.latest_id;
+    setStatus('live', 'Live');
+    startPoll();
+  } catch (e) {
+    setStatus('error', `Offline — ${e.message}`);
+    setTimeout(fetchInitial, 12_000); // retry
+  }
+}
+
+async function fetchUpdates() {
+  if (S.cfg.DEMO_MODE) {
+    ingest(demoReadings(1));
+    return;
+  }
+  try {
+    const url  = `${S.cfg.API_BASE_URL}${S.cfg.API_PATH}?after_id=${S.lastId}`;
+    const json = await apiGet(url);
+    if (json.data.readings.length > 0) {
+      ingest(json.data.readings);
+      if (json.data.latest_id) S.lastId = json.data.latest_id;
+    }
+    setStatus('live', 'Live');
+  } catch (e) {
+    setStatus('error', `Offline — ${e.message}`);
+  }
+}
+
+function startPoll() {
+  if (S.pollTimer) clearInterval(S.pollTimer);
+  S.pollTimer = setInterval(fetchUpdates, S.cfg.POLL_INTERVAL * 1000);
+  document.getElementById('fPoll').textContent = `${S.cfg.POLL_INTERVAL}s`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❺  DATA LAYER
+ * ═══════════════════════════════════════════════════════════════════ */
+function ingest(newRows) {
+  if (!newRows || newRows.length === 0) return;
+
+  newRows.forEach(r => {
+    S.readings.push(r);
+    if (r.id > S.lastId) S.lastId = r.id;
+  });
+
+  // Trim oldest readings beyond MAX_POINTS
+  if (S.readings.length > S.cfg.MAX_POINTS) {
+    S.readings = S.readings.slice(-S.cfg.MAX_POINTS);
+  }
+
+  renderAll();
+  updateFooter();
+}
+
+/* Filter readings to a time-range window */
+function rangeFilter(rows, range) {
+  if (range === 'all' || rows.length === 0) return rows;
+  const hrs   = {  '1h': 1,  '6h': 6, '24h': 24 }[range] ?? 1;
+  const cutoff = new Date(Date.now() - hrs * 3_600_000);
+  const out    = rows.filter(r => new Date(r.timestamp) >= cutoff);
+  return out.length >= 2 ? out : rows.slice(-2); // always at least 2 points
+}
+
+/* Min / Avg / Max over an array of numbers */
+function triStats(arr) {
+  if (!arr.length) return { min: null, avg: null, max: null };
+  const sum = arr.reduce((a, b) => a + b, 0);
+  return { min: Math.min(...arr), avg: sum / arr.length, max: Math.max(...arr) };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❻  CHART BUILDERS
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Doughnut gauge (270° speedometer arc) ── */
+function buildDonut(canvasId, sensor) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data            : [0, sensor.max - sensor.min],
+        backgroundColor : [sensor.color, 'rgba(255,255,255,0.06)'],
+        borderWidth     : 0,
+        circumference   : 270,
+        rotation        : -135,
+      }],
+    },
+    options: {
+      responsive          : true,
+      maintainAspectRatio : false,
+      cutout              : '78%',
+      animation           : { duration: 700, easing: 'easeInOutCubic' },
+      plugins             : { legend: { display: false }, tooltip: { enabled: false } },
+    },
+  });
+}
+
+/* ── Area chart ── */
+function buildArea(canvasId, sensor) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels   : [],
+      datasets : [{
+        label                   : sensor.label,
+        data                    : [],
+        borderColor             : sensor.color,
+        backgroundColor         : 'transparent', // set dynamically on each update
+        fill                    : true,
+        tension                 : 0.38,
+        pointRadius             : 0,
+        pointHoverRadius        : 5,
+        pointHoverBackgroundColor: sensor.color,
+        pointHoverBorderColor   : '#0b0d14',
+        pointHoverBorderWidth   : 2,
+        borderWidth             : 2,
+      }],
+    },
+    options: {
+      responsive          : true,
+      maintainAspectRatio : false,
+      animation           : { duration: 350 },
+      interaction         : { intersect: false, mode: 'index' },
+      plugins: {
+        legend  : { display: false },
+        tooltip : {
+          backgroundColor: 'rgba(8,10,18,0.92)',
+          borderColor    : sensor.color + '55',
+          borderWidth    : 1,
+          titleColor     : '#c9d1e0',
+          bodyColor      : sensor.color,
+          titleFont      : { family: 'Inter', size: 11 },
+          bodyFont       : { family: 'JetBrains Mono', size: 13, weight: '600' },
+          padding        : 10,
+          displayColors  : false,
+          callbacks: {
+            title : items => fmtFull(items[0].label),
+            label : item  => ` ${(+item.formattedValue).toFixed(2)} ${sensor.unit}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid  : { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          border: { display: false },
+          ticks : {
+            color         : '#475569',
+            font          : { family: 'JetBrains Mono', size: 10 },
+            maxTicksLimit : 9,
+            maxRotation   : 0,
+            callback      : (_, i, arr) => {
+              const lbl = arr[i]?.label;
+              return lbl ? fmtTick(lbl) : '';
+            },
+          },
+        },
+        y: {
+          grid  : { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+          border: { display: false },
+          ticks : {
+            color         : '#475569',
+            font          : { family: 'JetBrains Mono', size: 10 },
+            maxTicksLimit : 5,
+            callback      : v => v.toFixed(1),
+          },
+        },
+      },
+    },
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❼  RENDER — update all charts and readout values
+ * ═══════════════════════════════════════════════════════════════════ */
+function renderAll() {
+  if (!S.readings.length) return;
+  const latest = S.readings[S.readings.length - 1];
+
+  for (const [key, sensor] of Object.entries(SENSORS)) {
+    const visible = rangeFilter(S.readings, S.ranges[key]);
+
+    /* ── Area chart ── */
+    const ac = S.charts.area[key];
+    if (ac) {
+      ac.data.labels           = visible.map(r => r.timestamp);
+      ac.data.datasets[0].data = visible.map(r => r[sensor.key]);
+
+      // Rebuild gradient using actual chart area height
+      const h  = ac.chartArea?.height || 190;
+      const g  = ac.ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0,   sensor.color + '55');
+      g.addColorStop(0.55, sensor.color + '1a');
+      g.addColorStop(1,   sensor.color + '00');
+      ac.data.datasets[0].backgroundColor = g;
+      ac.update('none');
+
+      // Toggle empty state
+      const empty = document.getElementById('e' + cap(key));
+      if (empty) empty.classList.toggle('visible', visible.length < 2);
+    }
+
+    /* ── Doughnut gauge ── */
+    const dc  = S.charts.donut[key];
+    const val = latest[sensor.key];
+    if (dc && val != null) {
+      const clamped = Math.max(sensor.min, Math.min(sensor.max, val));
+      const filled  = clamped - sensor.min;
+      dc.data.datasets[0].data = [filled, (sensor.max - sensor.min) - filled];
+      dc.update();
+    }
+
+    /* ── Numeric readout ── */
+    const vEl = document.getElementById('v' + cap(key));
+    if (vEl && val != null) {
+      vEl.textContent = val.toFixed(1);
+      vEl.classList.remove('pulse');
+      void vEl.offsetWidth; // reflow to restart animation
+      vEl.classList.add('pulse');
+    }
+
+    /* ── Min / Avg / Max over all stored data ── */
+    const vals = S.readings.map(r => r[sensor.key]).filter(v => v != null);
+    const st   = triStats(vals);
+    const f    = v => v != null ? v.toFixed(1) : '—';
+    const el   = id => document.getElementById(id);
+    el('n' + cap(key)).textContent = f(st.min);
+    el('a' + cap(key)).textContent = f(st.avg);
+    el('x' + cap(key)).textContent = f(st.max);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❽  STATUS & FOOTER
+ * ═══════════════════════════════════════════════════════════════════ */
+function setStatus(type, text) {
+  const map = { init: '', live: 'live', demo: 'demo', error: 'error' };
+  document.getElementById('sDot').className = 'sdot ' + (map[type] || '');
+  document.getElementById('sTxt').textContent = text;
+}
+
+function updateFooter() {
+  document.getElementById('fTime').textContent  = new Date().toLocaleTimeString();
+  document.getElementById('fCount').textContent = S.readings.length.toLocaleString();
+  document.getElementById('fId').textContent    = S.lastId || '—';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❾  UTILITIES
+ * ═══════════════════════════════════════════════════════════════════ */
+const cap  = s => s.charAt(0).toUpperCase() + s.slice(1);
+const fmtFull = iso => { try { return new Date(iso).toLocaleString(undefined, { dateStyle:'short', timeStyle:'medium' }); } catch { return iso; } };
+const fmtTick = iso => { try { return new Date(iso).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' }); } catch { return ''; } };
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ❿  INIT — wire everything up when the DOM is ready
+ * ═══════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+
+  /* Load persisted config & populate settings UI */
+  loadCfg();
+  pushToUI();
+
+  /* Build all chart instances */
+  S.charts.donut.temp = buildDonut('dTemp', SENSORS.temp);
+  S.charts.donut.hum  = buildDonut('dHum',  SENSORS.hum);
+  S.charts.donut.ph   = buildDonut('dPh',   SENSORS.ph);
+
+  S.charts.area.temp  = buildArea('aTemp', SENSORS.temp);
+  S.charts.area.hum   = buildArea('aHum',  SENSORS.hum);
+  S.charts.area.ph    = buildArea('aPh',   SENSORS.ph);
+
+  /* Kick off initial data fetch */
+  fetchInitial();
+
+  /* ── Settings panel toggle ── */
+  const sBtn = document.getElementById('settingsBtn');
+  const sWrap = document.getElementById('settingsWrap');
+  sBtn.addEventListener('click', () => {
+    const open = sWrap.classList.toggle('open');
+    sBtn.classList.toggle('active', open);
+  });
+
+  /* ── Keyboard shortcut: S to toggle settings ── */
+  document.addEventListener('keydown', e => {
+    if (e.key === 's' && !['INPUT','TEXTAREA'].includes(e.target.tagName)) {
+      sBtn.click();
+    }
+  });
+
+  /* ── Apply & Restart ── */
+  document.getElementById('applyBtn').addEventListener('click', () => {
+    pullFromUI();
+    saveCfg();
+    // Full reset
+    if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
+    S.readings = [];
+    S.lastId   = 0;
+    S.demoSeq  = 1;
+    S.demoTime = new Date();
+    // Clear charts
+    Object.values(S.charts.area).forEach(c => {
+      c.data.labels = []; c.data.datasets[0].data = []; c.update('none');
+    });
+    Object.values(S.charts.donut).forEach((c, i) => {
+      const range = Object.values(SENSORS)[i];
+      c.data.datasets[0].data = [0, range.max - range.min]; c.update();
+    });
+    ['Temp','Hum','Ph'].forEach(k => {
+      document.getElementById('v'+k).textContent = '—';
+      ['n','a','x'].forEach(p => document.getElementById(p+k).textContent = '—');
+      document.getElementById('e'+k).classList.add('visible');
+    });
+    // Close settings panel
+    sWrap.classList.remove('open');
+    sBtn.classList.remove('active');
+    fetchInitial();
+  });
+
+  /* ── Reset to defaults ── */
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    S.cfg = {...DEFAULTS};
+    localStorage.removeItem('sf_cfg');
+    pushToUI();
+  });
+
+  /* ── Time-range selector buttons ── */
+  document.querySelectorAll('.tbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sensor = btn.dataset.sensor;
+      const range  = btn.dataset.range;
+      S.ranges[sensor] = range;
+      // Toggle active within the same button group
+      btn.closest('.time-btns').querySelectorAll('.tbtn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+      });
+      renderAll();
+    });
+  });
+
+});
+</script>
+</body>
+</html>

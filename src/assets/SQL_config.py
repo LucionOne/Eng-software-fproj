@@ -7,7 +7,7 @@ LOG_DATABASE_FILE_NAME:str = 'Logs.db'
 LOG_DATABASE_WIREFRAME:str = """
 CREATE TABLE IF NOT EXISTS sensor_logs (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  recorded_at TEXT    NOT NULL DEFAULT (datetime('now')),
+  recorded_at TEXT    NOT NULL DEFAULT (datetime('now', 'utc')),
   temperature REAL,
   humidity REAL,
   ph REAL

@@ -20,6 +20,9 @@ class DatabaseManager:
         self._build_db()
 
     # base
+    
+    def close_connection(self) -> None:
+        self.connection.close()
 
     def _build_db(self) -> None:
         WIREFRAME:str = config.LOG_DATABASE_WIREFRAME
@@ -38,7 +41,7 @@ class DatabaseManager:
 
     # SQL query executers
     
-    def fetch_data(self, sql_query:str, parameters:Sequence[Any]) -> list[Any]:
+    def fetch_data(self, sql_query:str, parameters:Sequence[Any]=()) -> list[Any]:
         """Executes a sql query and returns the result <p>
         Won't commit to the database"""
         try:
@@ -46,11 +49,11 @@ class DatabaseManager:
             cursor.execute(sql_query, parameters)
             return cursor.fetchall()
 
-        except Exception as exception:
-            log.warning("couldn't make query: %s\nexception: %s", sql_query, exception)
+        except Exception as e:
+            log.warning("couldn't make query: %s\nexception: %s", sql_query, e)
             return []
 
-    def make_query(self, sql_query:str, parameters:Sequence[Any]) -> list[Any]:
+    def make_query(self, sql_query:str, parameters:Sequence[Any]=()) -> list[Any]:
         """Executes a sql query and returns the result <p>
         Will commit to the database"""
         with self.connection as conn: # "with" auto commits when the function exits its scope

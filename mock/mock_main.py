@@ -4,6 +4,7 @@ import uvicorn
 from datetime import datetime, timedelta
 from enum import Enum
 import random as rand
+from typing import Generator
 
 # API instance creator
 app = FastAPI(title="MockAPI", docs_url=None)
@@ -60,14 +61,14 @@ class Simulation():
     def get_time(self) -> datetime:
         try:
             with open("C:\\Users\\guilh\\Desktop\\proj\\mock\\memory.txt", "r") as file:
-                return datetime.strptime(file.read(),'%d-%m-%Y %H:%M:%S')
+                return datetime.fromisoformat(file.read())
         except:
             return datetime.now()
 
 
     def write_time(self) -> None:
         with open("C:\\Users\\guilh\\Desktop\\proj\\mock\\memory.txt", "w") as file:
-            file.write(self.datetime.strftime('%d-%m-%Y %H:%M:%S'))
+            file.write(self.datetime.isoformat())
 
     
     def run_sim(self) -> None:
@@ -91,14 +92,14 @@ if __name__ == "__main__":
     main_instance.run_sim()
 
 # API get
-def get_db():
+def get_db() -> Generator[Simulation]:
     yield main_instance
     
 @app.get("/sensor_data")
 def get_data(instance:Simulation = Depends(get_db)) -> dict:
     sensor_dict = {}
     sensor_dict["sensors"] = [sensor.serialize() for sensor in instance.sensors]
-    sensor_dict["datetime"] = instance.datetime.strftime('%d-%m-%Y %H:%M:%S')
+    sensor_dict["datetime"] = instance.datetime.isoformat()
     instance.recorded = True
     return sensor_dict
 
