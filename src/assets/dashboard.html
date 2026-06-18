@@ -822,12 +822,12 @@ RULES:  readings sorted id ASC (oldest first).
  * ❶  CONFIGURATION  ← all tunable values live here
  * ═══════════════════════════════════════════════════════════════════ */
 const DEFAULTS = {
-  API_BASE_URL  : 'http://localhost:3000',  // Base URL of your API server
-  API_PATH      : '/api/readings',           // Endpoint path
+  API_BASE_URL  : 'http://localhost:3002',  // Base URL of your API server
+  API_PATH      : '/data',           // Endpoint path
   INITIAL_LIMIT : 120,                       // Readings fetched on startup
   POLL_INTERVAL : 5,                         // Seconds between polling calls
   MAX_POINTS    : 300,                       // Max data points kept per chart
-  DEMO_MODE     : true,                      // true = no API, use fake data
+  DEMO_MODE     : false,                      // true = no API, use fake data
 };
 
 /* ─── Sensor descriptors ─── */
@@ -840,13 +840,14 @@ const SENSORS = {
 /* ─── Runtime state ─── */
 const S = {
   cfg       : {...DEFAULTS},
-  readings  : [],           // All stored readings
-  lastId    : 0,            // Highest id received so far
-  pollTimer : null,         // setInterval handle
-  demoTime  : new Date(),   // Current position of demo clock
-  demoSeq   : 1,            // Auto-increment for demo ids
-  ranges    : { temp:'all', hum:'all', ph:'all' },
-  charts    : { area:{}, donut:{} },
+  readings   : [],           // All stored readings
+  lastId     : 0,            // Highest id received so far
+  pollTimer  : null,         // setInterval handle
+  retryTimer : null,         // setTimeout handle for fetchInitial retry
+  demoTime   : new Date(),   // Current position of demo clock
+  demoSeq    : 1,            // Auto-increment for demo ids
+  ranges     : { temp:'all', hum:'all', ph:'all' },
+  charts     : { area:{}, donut:{} },
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -929,7 +930,7 @@ async function fetchInitial() {
     startPoll();
   } catch (e) {
     setStatus('error', `Offline — ${e.message}`);
-    setTimeout(fetchInitial, 12_000); // retry
+    S.retryTimer = setTimeout(fetchInitial, 12_000); // retry
   }
 }
 
@@ -963,7 +964,14 @@ function startPoll() {
 function ingest(newRows) {
   if (!newRows || newRows.length === 0) return;
 
-  newRows.forEach(r => {
+  // ── Deduplication guard ───────────────────────────────────────────
+  // Only accept readings with an id we haven't seen yet.
+  // This prevents duplicate data if fetchInitial fires more than once
+  // (e.g. on retry after a transient error or after Apply & Restart).
+  const fresh = newRows.filter(r => r.id > S.lastId);
+  if (!fresh.length) return;
+
+  fresh.forEach(r => {
     S.readings.push(r);
     if (r.id > S.lastId) S.lastId = r.id;
   });
@@ -1223,7 +1231,8 @@ document.addEventListener('DOMContentLoaded', () => {
     pullFromUI();
     saveCfg();
     // Full reset
-    if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
+    if (S.pollTimer)  { clearInterval(S.pollTimer);  S.pollTimer  = null; }
+    if (S.retryTimer) { clearTimeout(S.retryTimer);  S.retryTimer = null; }
     S.readings = [];
     S.lastId   = 0;
     S.demoSeq  = 1;
