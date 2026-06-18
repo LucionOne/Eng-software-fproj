@@ -69,7 +69,7 @@ class DataPuller():
         while True:
             item = self._queue.get()
             try:
-                success = self.save_to_db(item, db_connection)
+                self.save_to_db(item, db_connection)
                 print("wrote")
                 # if not success: raise Exception
             except Exception as e:
@@ -88,35 +88,122 @@ class DataPuller():
         VALUES (?, ?, ?, ?)
         """
         print(item)
-        data = DataPuller.translate_from_api(item)
+        try:
+            data = DataPuller._translate_from_api(item)
+        except (KeyError, TypeError, ValueError) as e:
+            log.error("invalid api payload; skipping db write: %s", e)
+            return
+
         try:
             print(data)
             db.make_query(query, data)
         except Exception as e:
             log.critical('unable to make query %s', e)
         # return True
-
-
+# -------
     @staticmethod
-    def translate_from_api(item: dict) -> tuple[str, float, float, float]:
+    def _translate_from_api(item: dict) -> tuple[str, float | None, float | None, float | None]:
         """Translate API item to (recorded_at, temperature, humidity, ph).
         API absolutely needs to give datetime in ISO 8601 format"""
-        try:
-            sensors: list[dict] = item["sensors"]
-            recorded_at: str = item["datetime"]
-            temperature: float = 0.0
-            humidity: float = 0.0
-            ph: float = 0.0
-            for sensor in sensors:
-                st = SensorType.from_string(sensor["sensor_type"])  # st = SensorType.from_string(sensor.get("sensor_type", ""))
-                if st == SensorType.Temperature:
-                    temperature = float(sensor["value"])
-                elif st == SensorType.Humidity:
-                    humidity = float(sensor["value"])
-                elif st == SensorType.Ph:
-                    ph = float(sensor["value"])
+        if not isinstance(item, dict):
+            raise TypeError("api payload must be a dict")
 
-            return (recorded_at, temperature, humidity, ph)
+        dt_str = item.get("datetime")
+        if not isinstance(dt_str, str):
+            raise TypeError("datetime must be a string")
+
+        sensors = item.get("sensors")
+        if not isinstance(sensors, list):
+            raise ValueError("sensors must be a list")
+
+
+        recorded_at = DataPuller._parse_datetime(dt_str)
+        has_valid_sensor = False
+        sensor_values: dict[SensorType, float | None] = {
+            SensorType.Temperature: None,
+            SensorType.Humidity: None,
+            SensorType.Ph: None,
+        }
+
+        for sensor in sensors:
+            try:
+                sensor_type, value = DataPuller._validate_sensor_entry(sensor)
+            except Exception as e:
+                log.warning("Unable to extract data of sensor: %s %s", sensor, e)
+                continue
+            
+            if not DataPuller._valid_values(sensor_type, value):
+                log.warning("ignoring out-of-range value for sensor_type=%s: %s", sensor_type, value)
+                continue
+            
+            if sensor_type not in sensor_values:
+                log.warning("ignoring unknown sensor_type: %s", sensor.get("sensor_type"))
+                continue
+            
+            current_value = sensor_values.get(sensor_type)
+            if current_value is None:
+                sensor_values[sensor_type] = value
+                has_valid_sensor = True
+            else:
+                log.warning("multiple readings of %s; %s", sensor_type, value)
+
+        if not has_valid_sensor:
+            raise ValueError("no valid sensor measurements found in api payload")
+
+        return (
+            recorded_at,
+            sensor_values[SensorType.Temperature],
+            sensor_values[SensorType.Humidity],
+            sensor_values[SensorType.Ph],
+        )
+    
+    @staticmethod
+    def _parse_datetime(value: str) -> str:
+        """Validate that value is a valid ISO 8601 datetime string and return it."""
+        if not isinstance(value, str):
+            raise ValueError("datetime must be a string")
+
+        try:
+            normalized = value.replace("Z", "+00:00")
+            datetime.fromisoformat(normalized)
         except Exception as e:
-            log.critical("couldn't translate data from api %s", e, exc_info=True)
-            raise
+            raise ValueError(f"invalid ISO 8601 datetime: {value}") from e
+
+        return normalized
+
+    @staticmethod
+    def _validate_sensor_entry(sensor: dict) -> tuple[SensorType, float | None]:
+        """Validate sensor entry and return (SensorType, value)"""
+        if not isinstance(sensor, dict):
+            raise ValueError("each sensor entry must be a dict")
+
+        sensor_type = sensor.get("sensor_type")
+        if not isinstance(sensor_type, str):
+            raise ValueError("sensor_type must be a string")
+
+        value = sensor.get("value")
+        if value is not None:
+            try:
+                parsed_value = float(value)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"sensor value must be numeric for sensor_type={sensor_type}") from e
+        else:
+            parsed_value = None
+
+        sensor_enum = SensorType.from_string(sensor_type)
+        return sensor_enum, parsed_value
+
+    @staticmethod
+    def _valid_values(measurement_type:SensorType, value:float|None) -> bool:
+        """Verify that value is within expected range for given sensor type"""
+        if value == None:
+            return False
+        if measurement_type == SensorType.Temperature:
+            return -50 <= value <= 150
+        elif measurement_type == SensorType.Humidity:
+            return 0 <= value <= 100
+        elif measurement_type == SensorType.Ph:
+            return 0 <= value <= 14
+        elif measurement_type == SensorType.Unknown:
+            return False
+# ------

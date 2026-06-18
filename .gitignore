@@ -8,4 +8,8 @@ logs
 src/classes/__pycache__
 src/assets/__pycache__
 src/lib/__pycache__
-mock/memory.txt
+memory.txt
+.pytest_cache
+tests/__pycache__/conftest.cpython-314-pytest-9.1.0.pyc
+tests/__pycache__/test_translate_from_api.cpython-314-pytest-9.1.0.pyc
+.gitignore

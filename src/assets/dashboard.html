@@ -822,12 +822,12 @@ RULES:  readings sorted id ASC (oldest first).
  * ❶  CONFIGURATION  ← all tunable values live here
  * ═══════════════════════════════════════════════════════════════════ */
 const DEFAULTS = {
-  API_BASE_URL  : 'http://localhost:3000',  // Base URL of your API server
-  API_PATH      : '/api/readings',           // Endpoint path
+  API_BASE_URL  : 'http://localhost:3002',  // Base URL of your API server
+  API_PATH      : '/data',           // Endpoint path
   INITIAL_LIMIT : 120,                       // Readings fetched on startup
   POLL_INTERVAL : 5,                         // Seconds between polling calls
   MAX_POINTS    : 300,                       // Max data points kept per chart
-  DEMO_MODE     : true,                      // true = no API, use fake data
+  DEMO_MODE     : false,                      // true = no API, use fake data
 };
 
 /* ─── Sensor descriptors ─── */
