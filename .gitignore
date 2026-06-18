@@ -9,3 +9,5 @@ src/classes/__pycache__
 src/assets/__pycache__
 src/lib/__pycache__
 mock/memory.txt
+mock/memory.txt
+memory.txt
