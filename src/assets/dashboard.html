@@ -745,10 +745,10 @@ RULES:  readings sorted id ASC (oldest first).
       <p>Degrees Celsius (°C) · auto-scaled y-axis</p>
     </div>
     <div class="time-btns">
-      <button class="tbtn active" data-sensor="temp" data-range="1h">1H</button>
+      <button class="tbtn" data-sensor="temp" data-range="1h">1H</button>
       <button class="tbtn" data-sensor="temp" data-range="6h">6H</button>
       <button class="tbtn" data-sensor="temp" data-range="24h">24H</button>
-      <button class="tbtn" data-sensor="temp" data-range="all">ALL</button>
+      <button class="tbtn active" data-sensor="temp" data-range="all">ALL</button>
     </div>
   </div>
   <div class="chart-area">
@@ -764,10 +764,10 @@ RULES:  readings sorted id ASC (oldest first).
       <p>Relative Humidity (%) · 0–100 scale</p>
     </div>
     <div class="time-btns">
-      <button class="tbtn active" data-sensor="hum" data-range="1h">1H</button>
+      <button class="tbtn" data-sensor="hum" data-range="1h">1H</button>
       <button class="tbtn" data-sensor="hum" data-range="6h">6H</button>
       <button class="tbtn" data-sensor="hum" data-range="24h">24H</button>
-      <button class="tbtn" data-sensor="hum" data-range="all">ALL</button>
+      <button class="tbtn active" data-sensor="hum" data-range="all">ALL</button>
     </div>
   </div>
   <div class="chart-area">
@@ -783,10 +783,10 @@ RULES:  readings sorted id ASC (oldest first).
       <p>Acidity / Alkalinity (pH) · 0–14 scale</p>
     </div>
     <div class="time-btns">
-      <button class="tbtn active" data-sensor="ph" data-range="1h">1H</button>
+      <button class="tbtn" data-sensor="ph" data-range="1h">1H</button>
       <button class="tbtn" data-sensor="ph" data-range="6h">6H</button>
       <button class="tbtn" data-sensor="ph" data-range="24h">24H</button>
-      <button class="tbtn" data-sensor="ph" data-range="all">ALL</button>
+      <button class="tbtn active" data-sensor="ph" data-range="all">ALL</button>
     </div>
   </div>
   <div class="chart-area">
@@ -840,13 +840,14 @@ const SENSORS = {
 /* ─── Runtime state ─── */
 const S = {
   cfg       : {...DEFAULTS},
-  readings  : [],           // All stored readings
-  lastId    : 0,            // Highest id received so far
-  pollTimer : null,         // setInterval handle
-  demoTime  : new Date(),   // Current position of demo clock
-  demoSeq   : 1,            // Auto-increment for demo ids
-  ranges    : { temp:'1h', hum:'1h', ph:'1h' },
-  charts    : { area:{}, donut:{} },
+  readings   : [],           // All stored readings
+  lastId     : 0,            // Highest id received so far
+  pollTimer  : null,         // setInterval handle
+  retryTimer : null,         // setTimeout handle for fetchInitial retry
+  demoTime   : new Date(),   // Current position of demo clock
+  demoSeq    : 1,            // Auto-increment for demo ids
+  ranges     : { temp:'all', hum:'all', ph:'all' },
+  charts     : { area:{}, donut:{} },
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -929,7 +930,7 @@ async function fetchInitial() {
     startPoll();
   } catch (e) {
     setStatus('error', `Offline — ${e.message}`);
-    setTimeout(fetchInitial, 12_000); // retry
+    S.retryTimer = setTimeout(fetchInitial, 12_000); // retry
   }
 }
 
@@ -963,7 +964,14 @@ function startPoll() {
 function ingest(newRows) {
   if (!newRows || newRows.length === 0) return;
 
-  newRows.forEach(r => {
+  // ── Deduplication guard ───────────────────────────────────────────
+  // Only accept readings with an id we haven't seen yet.
+  // This prevents duplicate data if fetchInitial fires more than once
+  // (e.g. on retry after a transient error or after Apply & Restart).
+  const fresh = newRows.filter(r => r.id > S.lastId);
+  if (!fresh.length) return;
+
+  fresh.forEach(r => {
     S.readings.push(r);
     if (r.id > S.lastId) S.lastId = r.id;
   });
@@ -977,13 +985,17 @@ function ingest(newRows) {
   updateFooter();
 }
 
+/* Accept both "timestamp" and "recorded_at" field names from the API */
+const ts = r => r.timestamp ?? r.recorded_at ?? '';
+
 /* Filter readings to a time-range window */
 function rangeFilter(rows, range) {
   if (range === 'all' || rows.length === 0) return rows;
-  const hrs   = {  '1h': 1,  '6h': 6, '24h': 24 }[range] ?? 1;
+  const hrs    = { '1h': 1, '6h': 6, '24h': 24 }[range] ?? 1;
   const cutoff = new Date(Date.now() - hrs * 3_600_000);
-  const out    = rows.filter(r => new Date(r.timestamp) >= cutoff);
-  return out.length >= 2 ? out : rows.slice(-2); // always at least 2 points
+  const out    = rows.filter(r => new Date(ts(r)) >= cutoff);
+  // If nothing falls in the window (e.g. sparse/old data), show everything
+  return out.length > 0 ? out : rows;
 }
 
 /* Min / Avg / Max over an array of numbers */
@@ -1109,7 +1121,7 @@ function renderAll() {
     /* ── Area chart ── */
     const ac = S.charts.area[key];
     if (ac) {
-      ac.data.labels           = visible.map(r => r.timestamp);
+      ac.data.labels           = visible.map(r => ts(r));
       ac.data.datasets[0].data = visible.map(r => r[sensor.key]);
 
       // Rebuild gradient using actual chart area height
@@ -1123,7 +1135,7 @@ function renderAll() {
 
       // Toggle empty state
       const empty = document.getElementById('e' + cap(key));
-      if (empty) empty.classList.toggle('visible', visible.length < 2);
+      if (empty) empty.classList.toggle('visible', visible.length === 0);
     }
 
     /* ── Doughnut gauge ── */
@@ -1219,7 +1231,8 @@ document.addEventListener('DOMContentLoaded', () => {
     pullFromUI();
     saveCfg();
     // Full reset
-    if (S.pollTimer) { clearInterval(S.pollTimer); S.pollTimer = null; }
+    if (S.pollTimer)  { clearInterval(S.pollTimer);  S.pollTimer  = null; }
+    if (S.retryTimer) { clearTimeout(S.retryTimer);  S.retryTimer = null; }
     S.readings = [];
     S.lastId   = 0;
     S.demoSeq  = 1;

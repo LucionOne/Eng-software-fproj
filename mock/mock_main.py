@@ -4,6 +4,7 @@ import uvicorn
 from datetime import datetime, timedelta
 from enum import Enum
 import random as rand
+import math
 from typing import Generator
 
 # API instance creator
@@ -81,15 +82,46 @@ class Simulation():
             SensorType.Humidity: (0.0, 100.0),
             SensorType.Ph: (0.0, 14.0),
         }
+        
+        # Track simulation start time for equations
+        sim_start_time = self.datetime
 
         while True:
             if self.recorded:
                 self.datetime += self.clock
-                self.write_time() # yeah... whatever i'm tired now ;-;
+                self.write_time()
+                
+                # Calculate elapsed time in hours for realistic equations
+                elapsed_seconds = (self.datetime - sim_start_time).total_seconds()
+                elapsed_hours = elapsed_seconds / 3600.0
+                
                 for sensor in self.sensors:
                     min_val, max_val = ranges.get(sensor.type, (-9999.0, 9999.0))
-                    sensor.value += rand.uniform(-5.0, 5.0)
+                    
+                    if sensor.type == SensorType.Temperature:
+                        # Daily cycle (sin wave) + linear warming trend + noise
+                        base_temp = 20.0 + (elapsed_hours * 0.05)  # ~0.05°C per hour warming
+                        daily_cycle = 15.0 * math.sin(2 * math.pi * elapsed_hours / 24.0)  # ±15°C daily
+                        noise = rand.gauss(0, 1.5)  # Gaussian noise (~1.5°C std dev)
+                        sensor.value = base_temp + daily_cycle + noise
+                        
+                    elif sensor.type == SensorType.Humidity:
+                        # Inverse daily cycle + gradual decline + noise
+                        base_humidity = 60.0 - (elapsed_hours * 0.02)  # Slight decline over time
+                        daily_cycle = 25.0 * math.sin(2 * math.pi * (elapsed_hours + 6) / 24.0)  # Offset by 6h
+                        noise = rand.gauss(0, 2.5)  # Gaussian noise (~2.5% std dev)
+                        sensor.value = base_humidity + daily_cycle + noise
+                        
+                    elif sensor.type == SensorType.Ph:
+                        # Slow oscillation + slight drift + noise
+                        base_ph = 7.0 + (elapsed_hours * 0.001)  # Very slow upward drift
+                        slow_variation = 0.5 * math.sin(2 * math.pi * elapsed_hours / 72.0)  # 3-day cycle
+                        noise = rand.gauss(0, 0.2)  # Gaussian noise (~0.2 std dev)
+                        sensor.value = base_ph + slow_variation + noise
+                    
+                    # Clamp to valid range
                     sensor.value = max(min_val, min(sensor.value, max_val))
+                    
                 print("simulated")
                 self.recorded = False
 

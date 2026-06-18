@@ -51,12 +51,12 @@ def app_builder() -> FastAPI:
             }
         }
     
-    @app.get("/data/{date}")
-    def get_data_since(date:str):#, db:DatabaseManager = Depends(get_db)) -> dict:
+    @app.get("/data")
+    def get_data_since(after_id: int = 0):#, db:DatabaseManager = Depends(get_db)) -> dict:
         db = DatabaseManager()
-        readings = db.fetch_data("SELECT * FROM sensor_logs WHERE recorded_at > ?", (date,))
+        readings = db.fetch_data("SELECT * FROM sensor_logs WHERE id > ? ORDER BY id ASC", (after_id,))
         count = len(readings)
-        latest_id = db.fetch_data("SELECT MAX(id) as latest_id FROM sensor_logs WHERE recorded_at > ?", (date,))[0]["latest_id"] if readings else None
+        latest_id = db.fetch_data("SELECT MAX(id) as latest_id FROM sensor_logs WHERE id > ?", (after_id,))[0]["latest_id"] if readings else None
         db.close_connection()
         
         return {
