@@ -11,3 +11,4 @@ src/lib/__pycache__
 mock/memory.txt
 mock/memory.txt
 memory.txt
+.pytest_cache

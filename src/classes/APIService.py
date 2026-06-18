@@ -4,10 +4,12 @@ from classes.DatabaseManager import DatabaseManager
 from typing import Generator
 
 # uvicorn.run(app, host="0.0.0.0", port=3001)
-def app_builder(db:DatabaseManager) -> FastAPI:
+def app_builder() -> FastAPI:
+    # db = DatabaseManager()
     app = FastAPI(title= "TBD")
-    def get_db() -> Generator[DatabaseManager]:
-        yield db
+
+    # def get_db() -> Generator[DatabaseManager]:
+    #     yield db
     
     @app.get("/", response_class=HTMLResponse)
     def get_html() -> HTMLResponse:
@@ -33,13 +35,35 @@ def app_builder(db:DatabaseManager) -> FastAPI:
 # }
 
     @app.get("/data")
-    def get_data(db:DatabaseManager = Depends(get_db)) -> dict:
+    def get_data(): #db:DatabaseManager = Depends(get_db)) -> dict:
+        db = DatabaseManager()
         readings = db.fetch_data("SELECT * FROM sensor_logs")
+        count = db.fetch_data("SELECT COUNT(*) as count FROM sensor_logs")[0]["count"] if readings else 0
+        latest_id = db.fetch_data("SELECT MAX(id) as latest_id FROM sensor_logs")[0]["latest_id"] if readings else None
         
+        return {
+            "status": "ok",
+            "data": {
+                "readings": [dict(row) for row in readings],
+                "latest_id": latest_id,
+                "count": count
+            }
+        }
     
     @app.get("/data/{date}")
-    def get_data_since(date:str, db:DatabaseManager = Depends(get_db)) -> list[dict]:
-        readings = db.fetch_data("SELECT * FROM sensor_logs WHERE recorded_at > ?",(date))
-        return readings
+    def get_data_since(date:str):#, db:DatabaseManager = Depends(get_db)) -> dict:
+        db = DatabaseManager()
+        readings = db.fetch_data("SELECT * FROM sensor_logs WHERE recorded_at > ?", (date,))
+        count = len(readings)
+        latest_id = db.fetch_data("SELECT MAX(id) as latest_id FROM sensor_logs WHERE recorded_at > ?", (date,))[0]["latest_id"] if readings else None
+        
+        return {
+            "status": "ok",
+            "data": {
+                "readings": [dict(row) for row in readings],
+                "latest_id": latest_id,
+                "count": count
+            }
+        }
     
     return app
