@@ -40,7 +40,8 @@ def app_builder() -> FastAPI:
         readings = db.fetch_data("SELECT * FROM sensor_logs")
         count = db.fetch_data("SELECT COUNT(*) as count FROM sensor_logs")[0]["count"] if readings else 0
         latest_id = db.fetch_data("SELECT MAX(id) as latest_id FROM sensor_logs")[0]["latest_id"] if readings else None
-        
+        db.close_connection()
+
         return {
             "status": "ok",
             "data": {
@@ -56,6 +57,7 @@ def app_builder() -> FastAPI:
         readings = db.fetch_data("SELECT * FROM sensor_logs WHERE recorded_at > ?", (date,))
         count = len(readings)
         latest_id = db.fetch_data("SELECT MAX(id) as latest_id FROM sensor_logs WHERE recorded_at > ?", (date,))[0]["latest_id"] if readings else None
+        db.close_connection()
         
         return {
             "status": "ok",

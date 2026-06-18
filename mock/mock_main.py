@@ -76,13 +76,21 @@ class Simulation():
 
             
     def simulation(self) -> None:
+        ranges = {
+            SensorType.Temperature: (-50.0, 150.0),
+            SensorType.Humidity: (0.0, 100.0),
+            SensorType.Ph: (0.0, 14.0),
+        }
+
         while True:
-            if self.recorded == True:
+            if self.recorded:
                 self.datetime += self.clock
                 self.write_time() # yeah... whatever i'm tired now ;-;
-                print ("passed")
-                for i in range(len(self.sensors)):
-                    self.sensors[i].value += rand.uniform(-5.0, 5.0)
+                for sensor in self.sensors:
+                    min_val, max_val = ranges.get(sensor.type, (-9999.0, 9999.0))
+                    sensor.value += rand.uniform(-5.0, 5.0)
+                    sensor.value = max(min_val, min(sensor.value, max_val))
+                print("simulated")
                 self.recorded = False
 
 
@@ -101,6 +109,7 @@ def get_data(instance:Simulation = Depends(get_db)) -> dict:
     sensor_dict["sensors"] = [sensor.serialize() for sensor in instance.sensors]
     sensor_dict["datetime"] = instance.datetime.isoformat()
     instance.recorded = True
+    print (sensor_dict)
     return sensor_dict
 
 # Runs the API 
