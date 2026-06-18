@@ -48,7 +48,7 @@ class Simulation():
         self.datetime:datetime = self.get_time()
         self.clock:timedelta = timedelta(minutes=5)
 
-        self.recorded:bool = False
+        self.recorded:bool = True
         self.create_sensors()
 
 
