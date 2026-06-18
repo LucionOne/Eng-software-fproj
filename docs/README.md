@@ -23,16 +23,25 @@ python src/Main.py
 ```
 
 ### Access
-- API: `http://localhost:8000`
-- Dashboard: `http://localhost:8000/dashboard` (when implemented)
+- API: `http://localhost:3002`
+- Dashboard: `http://localhost:3002` (root returns dashboard HTML)
 
 ## Project Structure
 ```
 src/
-├── Main.py           # Entry point
-├── classes/          # Core business logic (DatabaseManager, DataPuller, etc.)
-├── lib/              # Utility functions
-└── assets/           # Static files for dashboard
+├── Main.py                    # Entry point
+├── classes/
+│   ├── DatabaseManager.py     # SQLite connection & query operations
+│   ├── dataPuller.py          # Sensor data ingestion with validation
+│   └── APIService.py          # FastAPI server & endpoints
+├── lib/
+│   └── logger.py              # Logging utilities
+└── assets/
+    ├── dashboard.html         # Web-based monitoring UI
+    ├── SQL_config.py          # Database schema & initialization
+    └── data_logs_db_wireframe.sql
+tests/
+├── test_*.py                  # Unit tests for core components
 ```
 
 ## Tech Stack
@@ -42,10 +51,24 @@ src/
 - **Threading:** Python `threading` module
 - **Frontend:** HTML/JavaScript (planned)
 
+## Key Features
+
+### Data Ingestion & Validation
+- Real-time sensor data pulling from mock API (configurable)
+- Input validation at the boundary: rejects out-of-range readings (e.g., pH 0-14, humidity 0-100, temperature -50 to 60°C)
+- ISO 8601 datetime format validation
+- Failed validations logged without corrupting the database
+
+### API Endpoints
+- `GET /` – Returns dashboard HTML
+- `GET /data` – Fetch all sensor readings
+- `GET /data?after_id=N` – Fetch readings after ID N for incremental updates
+
 ## Development
 - **Process:** See `docs/other/Process.md` for DoR/DoD and workflow
 - **Architecture:** See `docs/architecture/architectureOfAll.md` for detailed design
 - **Backlog:** See `docs/other/Backlog.md` for feature requirements
+- **Objectives:** See `Objectives.md` for current sprint goals
 
 ## Repository
 https://github.com/LucionOne/Eng-software-fproj.git

@@ -5,25 +5,34 @@ Build a lightweight garden monitoring system in under one week. Focus: well-desi
 
 ## Key Decisions
 
-### Language: Python
+### Language: Python ✓
 - **Why:** Rapid prototyping, simple syntax, excellent for small projects
-- **Concern:** No scaling required, so overhead is negligible
+- **Status:** Chosen and actively used
 
-### Framework: FastAPI
+### Framework: FastAPI ✓
 - **Why:** Modern, type-safe, minimal boilerplate, auto-generated docs
-- **Tradeoff:** Learning curve for async concepts, but threading suffices for MVP
+- **Status:** Running on port 3002; serves dashboard and API endpoints
 
-### Database: SQLite
+### Database: SQLite ✓
 - **Why:** Zero external dependencies, file-based, sufficient for single-instance local use
-- **Tradeoff:** Not suitable for distributed systems; acceptable here
+- **Status:** Active; integrated with DatabaseManager class
 
-### Architecture: Threading over Async
-- **Why:** Simpler initial implementation, easier debugging
+### Architecture: Threading + Input Validation ✓
+- **Why:** Simpler initial implementation, easier debugging; validation prevents data corruption
+- **Current:** DataPuller uses threading for continuous ingestion with sensor value & datetime validation
 - **Future:** Refactor to async/await if scaling to multiple ingestion sources
 
-### Frontend: Static HTML/JS
+### Frontend: Static HTML/JS ✓
 - **Why:** One less service to maintain; FastAPI serves static files natively
-- **Tradeoff:** No dynamic template rendering; simple but sufficient
+- **Status:** dashboard.html implemented; served at root endpoint
+
+## Validation Boundary
+Data ingestion now enforces:
+- **Temperature:** -50°C to 60°C (physically plausible)
+- **Humidity:** 0–100%
+- **pH:** 0–14
+- **DateTime:** ISO 8601 format required
+- **Logging:** Invalid readings logged but never persisted (prevents data corruption)
 
 ## Quality Standards
 - **Code:** Small, well-named functions; self-documenting where possible
