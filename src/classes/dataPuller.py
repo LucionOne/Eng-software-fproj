@@ -69,7 +69,7 @@ class DataPuller():
         while True:
             item = self._queue.get()
             try:
-                self.save_to_db(item, db_connection)
+                self._save_to_db(item, db_connection)
                 print("wrote")
                 # if not success: raise Exception
             except Exception as e:
@@ -82,7 +82,7 @@ class DataPuller():
         self._db_writer_thread.start()
 
     @staticmethod
-    def save_to_db(item:dict, db:DatabaseManager): # -> bool:
+    def _save_to_db(item:dict, db:DatabaseManager): # -> bool:
         query:str = """
         INSERT INTO sensor_logs(recorded_at, temperature, humidity, ph)
         VALUES (?, ?, ?, ?)
@@ -91,7 +91,7 @@ class DataPuller():
         try:
             data = DataPuller._translate_from_api(item)
         except (KeyError, TypeError, ValueError) as e:
-            log.error("invalid api payload; skipping db write: %s", e)
+            log.error("invalid api payload; skipping db write: %s %s", e, item)
             return
 
         try:
@@ -127,7 +127,7 @@ class DataPuller():
 
         for sensor in sensors:
             try:
-                sensor_type, value = DataPuller._validate_sensor_entry(sensor)
+                sensor_type, value = DataPuller._parse_sensor_entry(sensor)
             except Exception as e:
                 log.warning("Unable to extract data of sensor: %s %s", sensor, e)
                 continue
@@ -172,7 +172,7 @@ class DataPuller():
         return normalized
 
     @staticmethod
-    def _validate_sensor_entry(sensor: dict) -> tuple[SensorType, float | None]:
+    def _parse_sensor_entry(sensor: dict) -> tuple[SensorType, float | None]:
         """Validate sensor entry and return (SensorType, value)"""
         if not isinstance(sensor, dict):
             raise ValueError("each sensor entry must be a dict")
